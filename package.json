@@ -1,0 +1,18 @@
+{
+  "name": "light-eat-redesign",
+  "version": "1.0.0",
+  "private": true,
+  "description": "轻食记 LightEat 前端 - Tailwind CSS 预编译",
+  "scripts": {
+    "build:css": "tailwindcss -i ./src/tailwind.css -o ./css/tailwind.css --minify",
+    "watch:css": "tailwindcss -i ./src/tailwind.css -o ./css/tailwind.css --watch",
+    "start": "node server/server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "devDependencies": {
+    "@tailwindcss/cli": "4.3.1",
+    "tailwindcss": "4.3.1"
+  }
+}

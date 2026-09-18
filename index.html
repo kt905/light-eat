@@ -1,0 +1,522 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN" class="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#1B6B4A">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <title>轻食记 LightEat - 智能饮食管理平台</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.js" async></script>
+    <link rel="stylesheet" href="./css/tailwind.css?v=6" />
+    <link rel="stylesheet" href="./style.css?v=6" />
+</head>
+<body class="text-gray-800" data-page="home">
+
+<!-- Top Header -->
+<header class="app-header">
+  <div class="app-header-inner">
+    <div class="flex items-center gap-2.5 lg:hidden">
+      <div class="app-logo-icon">
+        <i data-lucide="leaf" class="w-5 h-5"></i>
+      </div>
+      <div>
+        <h1 class="app-name">轻食记</h1>
+        <span class="app-name-en">LightEat</span>
+      </div>
+    </div>
+    <div class="items-center gap-2.5 hidden lg:flex">
+      <i data-lucide="leaf" class="w-5 h-5 text-brand"></i>
+      <h2 class="header-title" id="header-title">首页</h2>
+    </div>
+    <button onclick="switchPage('profile')" class="header-profile-btn">我的档案</button>
+  </div>
+</header>
+
+<main class="app-main max-w-3xl mx-auto pb-24">
+
+  <!-- Tab 1: Home -->
+  <section id="page-home" class="section active">
+    <!-- PC 左列：精简 Hero + 全部功能/跳转入口 -->
+    <div class="home-left-col">
+      <div class="hero">
+        <div class="hero-orb-gold"></div>
+        <div class="hero-orb-teal"></div>
+        <div class="hero-content">
+          <div class="hero-badge">
+            <i data-lucide="sparkles" class="w-3.5 h-3.5"></i>
+            AI 饮食健康助手
+          </div>
+          <h2 class="hero-title">拍照 3 秒<br/>知道<span class="highlight">能不能吃</span></h2>
+          <p class="hero-sub">热量 · 钾 · 钠 · 磷 智能分析<br/>覆盖 6 种饮食模式，精准适配</p>
+          <button onclick="switchPage('scan')" class="btn btn-gold inline-flex">
+            <i data-lucide="camera" class="w-5 h-5"></i>
+            立即拍照分析
+          </button>
+        </div>
+        <div class="hero-image-wrap">
+          <img src="./assets/hero-fresh-food.jpg" alt="健康餐食" />
+          <div class="hero-image-overlay"></div>
+          <div class="hero-image-label">
+            <div class="hero-check-badge">
+              <div class="hero-check-icon">
+                <i data-lucide="check-circle" class="w-4 h-4"></i>
+              </div>
+              <span>智能分析中...</span>
+            </div>
+            <div class="hero-match-badge">演示模式</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="px-5 py-6 home-nav-grid-wrap">
+        <div class="grid grid-cols-2 gap-3 home-nav-grid">
+          <div onclick="switchPage('scan')" class="glass-card p-4 home-nav-card cursor-pointer">
+            <div class="feature-icon green">
+              <i data-lucide="camera" class="w-6 h-6"></i>
+            </div>
+            <div class="min-w-0">
+              <h3 class="feature-title">AI 拍照识别</h3>
+              <p class="feature-desc">拍照/相册识别食物营养</p>
+            </div>
+          </div>
+          <div onclick="switchPage('logs')" class="glass-card p-4 home-nav-card cursor-pointer">
+            <div class="feature-icon blue">
+              <i data-lucide="clipboard-list" class="w-6 h-6"></i>
+            </div>
+            <div class="min-w-0">
+              <h3 class="feature-title">饮食记录</h3>
+              <p class="feature-desc">今日每餐摄入明细</p>
+            </div>
+          </div>
+          <div onclick="switchPage('dashboard')" class="glass-card p-4 home-nav-card cursor-pointer">
+            <div class="feature-icon gold">
+              <i data-lucide="bar-chart-3" class="w-6 h-6"></i>
+            </div>
+            <div class="min-w-0">
+              <h3 class="feature-title">营养仪表盘</h3>
+              <p class="feature-desc">热量与电解质可视化</p>
+            </div>
+          </div>
+          <div onclick="switchPage('recipes')" class="glass-card p-4 home-nav-card cursor-pointer">
+            <div class="feature-icon red">
+              <i data-lucide="chef-hat" class="w-6 h-6"></i>
+            </div>
+            <div class="min-w-0">
+              <h3 class="feature-title">个性食谱</h3>
+              <p class="feature-desc">三餐智能搭配推荐</p>
+            </div>
+          </div>
+          <div onclick="switchPage('library')" class="glass-card p-4 home-nav-card cursor-pointer">
+            <div class="feature-icon purple">
+              <i data-lucide="book-open" class="w-6 h-6"></i>
+            </div>
+            <div class="min-w-0">
+              <h3 class="feature-title">食物营养库</h3>
+              <p class="feature-desc">查询常见食物营养数据</p>
+            </div>
+          </div>
+          <div onclick="switchPage('profile')" class="glass-card p-4 home-nav-card cursor-pointer">
+            <div class="feature-icon teal">
+              <i data-lucide="user" class="w-6 h-6"></i>
+            </div>
+            <div class="min-w-0">
+              <h3 class="feature-title">我的档案</h3>
+              <p class="feature-desc">身体数据与饮食模式</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="page-body">
+      <div class="flex items-center justify-between mb-3">
+        <h3 class="font-bold text-lg text-primary m-0">今日概览</h3>
+        <span class="text-xs font-medium text-tertiary" id="today-date"></span>
+      </div>
+      <div id="home-summary" class="text-sm text-secondary cursor-pointer" onclick="switchPage('dashboard')">加载中…</div>
+    </div>
+  </section>
+
+  <!-- Tab 2: AI Scan -->
+  <section id="page-scan" class="section">
+    <div class="page-header">
+      <h2 class="page-title">AI 拍照营养分析</h2>
+      <div class="text-xs text-tertiary mt-1" id="scan-mode-hint">
+        <i data-lucide="info" class="w-3 h-3 inline -mt-0.5"></i>
+        <span id="scan-mode-text">正在连接识别服务...</span>
+      </div>
+    </div>
+    <div class="page-body">
+      <div class="glass-card p-5">
+        <div class="scan-desktop-grid">
+          <div class="scan-upload-col">
+            <div class="upload-area" id="preview-box" onclick="document.getElementById('food-file').click()">
+              <img id="preview-bg" src="./assets/hero-fresh-food.jpg" class="upload-bg" alt="" />
+              <div class="relative z-10 flex flex-col items-center">
+                <div class="w-16 h-16 icon-gradient mb-3">
+                  <i data-lucide="camera" class="w-8 h-8"></i>
+                </div>
+                <span class="text-sm font-semibold text-primary">点击上传或拍摄餐食照片</span>
+                <span class="text-xs mt-1 text-tertiary">支持 JPG、PNG 格式</span>
+              </div>
+              <img id="preview-img" class="upload-preview" alt="" />
+              <div id="scanner" class="scanner-line hidden z-30"></div>
+            </div>
+            <input type="file" accept="image/*" id="food-file" class="hidden" onchange="handleFileSelect(event)" />
+            <button onclick="document.getElementById('food-file').click()" class="btn btn-secondary mt-4">
+              <i data-lucide="image-plus" class="w-5 h-5"></i>
+              从相册选择
+            </button>
+          </div>
+          <div class="scan-form-col">
+            <div>
+              <label class="form-label">或直接选择食物</label>
+              <select id="manual-food" class="select-field">
+                <option value="">-- 让 AI 辅助识别后选择 --</option>
+              </select>
+            </div>
+
+            <div class="mt-4">
+              <label class="form-label">食用量</label>
+              <div class="portion-grid">
+                <select id="portion-unit" class="select-field" onchange="applyPortion()"></select>
+                <select id="portion-count" class="select-field" onchange="applyPortion()">
+                  <option value="0.5">0.5 份</option>
+                  <option value="1" selected>1 份</option>
+                  <option value="1.5">1.5 份</option>
+                  <option value="2">2 份</option>
+                  <option value="3">3 份</option>
+                </select>
+                <input type="number" id="grams" value="150" class="input-field" oninput="onGramsInput()" />
+              </div>
+              <div class="text-xs text-tertiary mt-1.5">选择单位与份数自动换算克数，也可手动修改</div>
+            </div>
+
+            <button id="analyze-btn" onclick="analyze()" class="btn btn-primary mt-5">
+              <i data-lucide="sparkles" class="w-5 h-5"></i>
+              <span id="analyze-btn-text">开始分析</span>
+            </button>
+          </div>
+        </div>
+
+        <div id="scan-progress" class="mt-4 hidden">
+          <div class="flex items-center justify-between text-xs mb-2">
+            <span id="scan-step" class="text-secondary">正在上传图片...</span>
+            <span id="scan-pct" class="font-bold tabular-nums text-brand">0%</span>
+          </div>
+          <div class="progress-track">
+            <div id="scan-bar" class="progress-bar-fill" style="width:0%"></div>
+          </div>
+          <div id="scan-detections" class="mt-3 space-y-1.5"></div>
+        </div>
+
+        <!-- AI 候选选择面板 -->
+        <div id="candidates-panel" class="candidates-panel hidden">
+          <div class="candidates-title">
+            <i data-lucide="scan-search" class="w-4 h-4 inline -mt-0.5 text-brand"></i>
+            可能是以下食物，请点击选择
+          </div>
+          <div class="candidates-demo-hint">
+            <i data-lucide="alert-triangle" class="w-3 h-3"></i>
+            识别置信度仅供参考，请选择最接近的食物
+          </div>
+          <div id="candidates-list"></div>
+          <button onclick="showManualSelector()" class="btn btn-ghost mt-3 w-full">
+            <i data-lucide="search" class="w-4 h-4"></i>
+            都不对？从食物库手动选择
+          </button>
+        </div>
+
+        <div id="analyze-result" class="mt-5 hidden">
+          <div class="flex items-center gap-3 mb-4">
+            <div id="result-img" class="w-16 h-16 rounded-xl" style="box-shadow:var(--shadow-sm,0 1px 2px rgba(15,41,33,0.04));"></div>
+            <div class="min-w-0 flex-1">
+              <h3 class="font-bold text-lg text-primary" id="result-name"></h3>
+              <div id="result-tags" class="flex flex-wrap gap-1.5 mt-1.5"></div>
+            </div>
+          </div>
+          <div class="grid grid-cols-2 gap-2.5 text-sm">
+            <div class="nutrient-card"><div class="nutrient-label">热量</div><div class="nutrient-value"><span id="res-cal"></span> kcal</div></div>
+            <div class="nutrient-card"><div class="nutrient-label">碳水</div><div class="nutrient-value"><span id="res-carbs"></span> g</div></div>
+            <div class="nutrient-card"><div class="nutrient-label">蛋白质</div><div class="nutrient-value"><span id="res-protein"></span> g</div></div>
+            <div class="nutrient-card"><div class="nutrient-label">脂肪</div><div class="nutrient-value"><span id="res-fat"></span> g</div></div>
+            <div class="nutrient-card"><div class="nutrient-label">钾</div><div class="nutrient-value"><span id="res-k"></span> mg</div></div>
+            <div class="nutrient-card"><div class="nutrient-label">钠</div><div class="nutrient-value"><span id="res-na"></span> mg</div></div>
+            <div class="nutrient-card"><div class="nutrient-label">磷</div><div class="nutrient-value"><span id="res-p"></span> mg</div></div>
+            <div class="nutrient-card"><div class="nutrient-label">嘌呤</div><div class="nutrient-value"><span id="res-purine"></span> mg</div></div>
+          </div>
+          <div id="result-detections" class="mt-3"></div>
+          <div id="result-advice" class="advice-box info"></div>
+          <div id="result-activity" class="activity-box mt-3 hidden"></div>
+          <div class="flex gap-2 mt-3">
+            <button onclick="backToCandidates()" class="btn btn-ghost btn-sm flex-1">
+              <i data-lucide="arrow-left" class="w-4 h-4"></i>
+              重新选择
+            </button>
+            <button onclick="addCurrentToLog(event)" class="btn btn-primary flex-[2]" style="min-height:52px;">
+              <i data-lucide="plus-circle" class="w-5 h-5"></i>
+              记入今日饮食
+            </button>
+          </div>
+        </div>
+
+        <!-- 手动选择器弹出层 -->
+        <div id="manual-select-panel" class="mt-4 hidden">
+          <div class="text-xs font-semibold text-secondary mb-2">从食物库选择（共 <span id="food-count"></span> 种）</div>
+          <input type="text" id="manual-search" placeholder="搜索食物名称..." class="input-field mb-2" oninput="filterManualList()" />
+          <div id="manual-food-list" class="max-h-64 overflow-y-auto no-scrollbar space-y-1.5"></div>
+          <button onclick="hideManualSelector()" class="btn btn-ghost mt-2 w-full">取消</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Tab 3: Food Logs -->
+  <section id="page-logs" class="section">
+    <div class="page-header">
+      <h2 class="page-title">饮食记录</h2>
+    </div>
+    <div class="page-body">
+      <div class="log-datebar">
+        <button type="button" class="log-nav-btn" onclick="shiftLogsDate(-1)" aria-label="前一天">
+          <i data-lucide="chevron-left" class="w-5 h-5"></i>
+        </button>
+        <label class="log-date-pill">
+          <i data-lucide="calendar" class="w-4 h-4 log-date-icon"></i>
+          <span id="logs-date-label" class="log-date-label">今天</span>
+          <input type="date" id="logs-date-input" class="log-date-input" onchange="jumpLogsDate(this.value)" />
+        </label>
+        <button type="button" id="logs-next-btn" class="log-nav-btn" onclick="shiftLogsDate(1)" aria-label="后一天">
+          <i data-lucide="chevron-right" class="w-5 h-5"></i>
+        </button>
+      </div>
+      <div class="log-today-row" id="logs-today-row" style="display:none;">
+        <button type="button" class="log-today-btn" onclick="jumpLogsDate(todayStr())">回到今天</button>
+      </div>
+      <div id="logs-list" class="space-y-3"></div>
+      <button onclick="clearShownLogs()" class="btn btn-danger mt-5">
+        <i data-lucide="trash-2" class="w-4 h-4"></i>
+        <span id="logs-clear-text">清空今日记录</span>
+      </button>
+    </div>
+  </section>
+
+  <!-- Tab 4: Dashboard -->
+  <section id="page-dashboard" class="section">
+    <div class="page-header">
+      <h2 class="page-title">营养仪表盘</h2>
+    </div>
+    <div class="page-body">
+      <div id="dashboard-cards" class="space-y-3"></div>
+      <div class="mt-6 space-y-4 lg:grid lg:grid-cols-2 lg:gap-6 lg:space-y-0">
+        <div class="glass-card p-4">
+          <h3 class="section-title">宏量营养素供能占比</h3>
+          <div class="relative">
+            <canvas id="chart-macros" class="chart-canvas"></canvas>
+            <div id="chart-macros-empty" class="chart-empty hidden absolute inset-0">
+              <i data-lucide="pie-chart" class="w-8 h-8"></i>
+              <span>暂无饮食记录，记录一餐即可查看</span>
+            </div>
+          </div>
+        </div>
+        <div class="glass-card p-4">
+          <h3 class="section-title">关键指标 vs 上限</h3>
+          <div class="relative">
+            <canvas id="chart-limits" class="chart-canvas"></canvas>
+            <div id="chart-limits-empty" class="chart-empty hidden absolute inset-0">
+              <i data-lucide="shield-alert" class="w-8 h-8"></i>
+              <span>当前模式未设置摄入上限</span>
+            </div>
+          </div>
+        </div>
+        <div class="glass-card p-4 lg:col-span-2">
+          <h3 class="section-title" style="margin-bottom:4px;">近7天热量趋势</h3>
+          <p class="text-xs text-tertiary mb-3">绿色虚线为您的每日目标热量</p>
+          <div class="relative">
+            <canvas id="chart-trend" class="chart-canvas" style="height:200px;max-height:200px;"></canvas>
+            <div id="chart-trend-empty" class="chart-empty hidden absolute inset-0">
+              <i data-lucide="trending-up" class="w-8 h-8"></i>
+              <span>开始记录饮食，追踪每周热量变化</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Tab 5: Recipes -->
+  <section id="page-recipes" class="section">
+    <div class="page-header">
+      <h2 class="page-title">个性化食谱推荐</h2>
+    </div>
+    <div class="px-5 pb-2">
+      <p class="text-sm text-secondary">根据当前的「<span id="recipe-mode" class="font-bold text-brand"></span>」生成</p>
+    </div>
+    <div class="page-body">
+      <div id="recipe-cards" class="space-y-4"></div>
+      <button onclick="generateRecipes()" class="btn btn-secondary mt-5">
+        <i data-lucide="refresh-cw" class="w-4 h-4"></i>
+        重新生成一日食谱
+      </button>
+    </div>
+  </section>
+
+  <!-- Tab 6: Food Library -->
+  <section id="page-library" class="section">
+    <div class="page-header">
+      <h2 class="page-title">食物营养库</h2>
+    </div>
+    <div class="page-body">
+      <input type="text" id="lib-search" placeholder="搜索食物名称…" oninput="renderLibrary()" class="input-field mb-4" />
+      <div class="glass-card overflow-hidden" style="padding:0;">
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead>
+              <tr class="lib-header-row">
+                <th class="lib-th text-left">食物</th>
+                <th class="lib-th text-right">热量</th>
+                <th class="lib-th text-right">钾</th>
+                <th class="lib-th text-right">钠</th>
+                <th class="lib-th text-right">磷</th>
+                <th class="lib-th text-left">风险</th>
+              </tr>
+            </thead>
+            <tbody id="lib-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Profile Page -->
+  <section id="page-profile" class="section">
+    <div class="page-header">
+      <h2 class="page-title">我的饮食档案</h2>
+    </div>
+    <div class="page-body space-y-4 lg:grid lg:grid-cols-2 lg:gap-6 lg:space-y-0">
+      <div class="glass-card p-5">
+        <label class="form-label" style="margin-bottom:4px;">身体数据</label>
+        <p class="form-hint">用于计算基础代谢率（BMR）和每日热量目标（TDEE）</p>
+        <div class="grid grid-cols-2 gap-3 mb-3">
+          <div>
+            <label class="form-sub-label">性别</label>
+            <div class="flex gap-2" id="gender-selector">
+              <button type="button" data-val="male" class="gender-btn active">男</button>
+              <button type="button" data-val="female" class="gender-btn">女</button>
+            </div>
+          </div>
+          <div>
+            <label class="form-sub-label">年龄</label>
+            <input type="number" id="input-age" min="10" max="120" class="profile-input" placeholder="岁">
+          </div>
+        </div>
+        <div class="grid grid-cols-2 gap-3 mb-3">
+          <div>
+            <label class="form-sub-label">身高 (cm)</label>
+            <input type="number" id="input-height" min="100" max="250" step="0.1" class="profile-input" placeholder="cm">
+          </div>
+          <div>
+            <label class="form-sub-label">体重 (kg)</label>
+            <input type="number" id="input-weight" min="20" max="200" step="0.1" class="profile-input" placeholder="kg">
+          </div>
+        </div>
+        <div>
+          <label class="form-sub-label">活动水平</label>
+          <select id="input-activity" class="profile-input"></select>
+        </div>
+        <div id="bmr-display" class="bmr-box"></div>
+      </div>
+
+      <div class="glass-card p-5 lg:order-2 lg:flex lg:flex-col">
+        <label class="form-label">选择饮食模式</label>
+        <div class="grid grid-cols-2 gap-3 lg:grid-cols-3 lg:flex-1 lg:auto-rows-fr" id="mode-selector"></div>
+      </div>
+
+      <div class="glass-card p-5 lg:order-3 lg:col-span-2">
+        <label class="form-label" style="margin-bottom:4px;">每日摄入上限</label>
+        <p class="form-hint">热量目标已根据身体数据自动计算，其他指标可自行调整</p>
+        <div class="grid grid-cols-2 gap-4" id="target-inputs"></div>
+        <button onclick="saveProfile()" class="btn btn-primary mt-5" style="min-height:52px;">
+          <i data-lucide="save" class="w-5 h-5"></i>
+          保存档案
+        </button>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<nav class="bottom-nav">
+  <div class="nav-inner">
+    <div class="sidebar-brand hidden lg:flex">
+      <div class="sidebar-brand-icon">
+        <i data-lucide="leaf" class="w-5 h-5"></i>
+      </div>
+      <div>
+        <div class="sidebar-brand-name">轻食记</div>
+        <div class="sidebar-brand-en">LightEat</div>
+      </div>
+    </div>
+    <button onclick="switchPage('home')" class="nav-item nav-active" data-page="home">
+      <div class="relative">
+        <i data-lucide="home" class="w-5 h-5"></i>
+      </div>
+      <span class="nav-label-bold">首页</span>
+    </button>
+    <button onclick="switchPage('scan')" class="nav-item" data-page="scan">
+      <div class="relative">
+        <i data-lucide="camera" class="w-5 h-5"></i>
+      </div>
+      <span class="nav-label-medium">拍照</span>
+    </button>
+    <button onclick="switchPage('logs')" class="nav-item" data-page="logs">
+      <div class="relative">
+        <i data-lucide="clipboard-list" class="w-5 h-5"></i>
+      </div>
+      <span class="nav-label-medium">记录</span>
+    </button>
+    <button onclick="switchPage('dashboard')" class="nav-item" data-page="dashboard">
+      <div class="relative">
+        <i data-lucide="bar-chart-3" class="w-5 h-5"></i>
+      </div>
+      <span class="nav-label-medium">仪表盘</span>
+    </button>
+    <button onclick="switchPage('recipes')" class="nav-item" data-page="recipes">
+      <div class="relative">
+        <i data-lucide="chef-hat" class="w-5 h-5"></i>
+      </div>
+      <span class="nav-label-medium">食谱</span>
+    </button>
+    <button onclick="switchPage('library')" class="nav-item" data-page="library">
+      <div class="relative">
+        <i data-lucide="book-open" class="w-5 h-5"></i>
+      </div>
+      <span class="nav-label-medium">食物库</span>
+    </button>
+    <div class="nav-divider hidden lg:block"></div>
+    <button onclick="switchPage('profile')" class="nav-item hidden lg:flex" data-page="profile">
+      <div class="relative">
+        <i data-lucide="user" class="w-5 h-5"></i>
+      </div>
+      <span class="nav-label-medium">我的档案</span>
+    </button>
+  </div>
+</nav>
+
+<script src="js/data.js?v=6"></script>
+<script src="js/core.js?v=6"></script>
+<script src="js/ui.js?v=6"></script>
+<script src="js/router.js?v=6"></script>
+<script src="js/pages/home.js?v=6"></script>
+<script src="js/pages/profile.js?v=6"></script>
+<script src="js/pages/scan.js?v=6"></script>
+<script src="js/pages/logs.js?v=6"></script>
+<script src="js/pages/dashboard.js?v=6"></script>
+<script src="js/pages/recipes.js?v=6"></script>
+<script src="js/pages/library.js?v=6"></script>
+<script src="js/init.js?v=6"></script>
+<script src="https://cdn.jsdelivr.net/npm/lucide@1.46.0/dist/umd/lucide.min.js" async onload="refreshIcons()"></script>
+    <script>refreshIcons();</script>
+</body>
+</html>

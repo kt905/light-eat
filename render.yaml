@@ -1,0 +1,23 @@
+# Render Blueprint —— 免费 Web Service（闲置约 15 分钟休眠，冷启动 30~60s）
+# 用法：
+#   1) 把仓库推送到 GitHub
+#   2) Render 控制台 → New → Blueprint → 选择本仓库
+#   3) 按提示填 BAIDU_API_KEY / BAIDU_SECRET_KEY（可留空 → 自动 Mock / 浏览器本地 CLIP）
+services:
+  - type: web
+    name: light-eat
+    runtime: node
+    plan: free
+    branch: main
+    autoDeploy: true
+    # 根目录装 Tailwind 依赖并构建 CSS，再装后端依赖
+    buildCommand: npm ci --include=dev && npm run build:css && cd server && npm ci
+    startCommand: node server/server.js
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: BAIDU_API_KEY
+        sync: false
+      - key: BAIDU_SECRET_KEY
+        sync: false

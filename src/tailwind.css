@@ -1,0 +1,6 @@
+@import "tailwindcss";
+
+/* 显式指定扫描源：HTML 骨架 + 全部前端 JS（类名多为模板字符串字面量） */
+@source "../index.html";
+@source "../js/**/*.js";
+@source "../js/*.js";
