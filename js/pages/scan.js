@@ -216,14 +216,33 @@ async function getApiBase() {
 const CLIP_TRANSFORMERS_CDN = 'https://cdn.jsdelivr.net/npm/@huggingface/transformers@4.3.0';
 const CLIP_MODEL_ID = 'Xenova/clip-vit-base-patch32';
 const CLIP_MIN_SCORE = 0.04; // 仅保留超过该置信度的候选
+// 本地模型目录：由 download-clip-model.ps1 下载到 assets/models/（仅本地使用）
+const LOCAL_MODEL_PATH = new URL('./assets/models/', location.href).href;
+
+// 检测本地自托管模型是否就绪（页面同级的 assets/models/ 下存在 config.json）
+async function isLocalModelReady() {
+  try {
+    const ctrl = new AbortController();
+    const t = setTimeout(() => ctrl.abort(), 2500);
+    const r = await fetch(LOCAL_MODEL_PATH + CLIP_MODEL_ID + '/config.json',
+      { method: 'HEAD', cache: 'no-store', signal: ctrl.signal });
+    clearTimeout(t);
+    return r.ok;
+  } catch (e) { return false; }
+}
 
 let clipClassifierPromise = null;
 function getClipClassifier() {
   if (!clipClassifierPromise) {
     clipClassifierPromise = (async () => {
-      // 超时看门狗：约150MB 模型首次下载，给足时间
-      const timeoutMs = 300000;
-      const timeoutMsg = '模型下载超时：请检查网络，可稍后点「下载 AI 模型」按钮重试';
+      // 本地已用 download-clip-model.ps1 下载模型时直接加载本地文件（快）；
+      // 仅 localhost 探测，线上静态托管静默跳过，避免无意义的 config.json 404
+      const isLocalHost = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+      const localReady = isLocalHost ? await isLocalModelReady() : false;
+      const timeoutMs = localReady ? 30000 : 300000;
+      const timeoutMsg = localReady
+        ? '本地模型加载超时，请刷新页面重试'
+        : '模型下载超时：网络不佳，可稍后点「下载 AI 模型」按钮重试';
       let timer;
       const timedOut = new Promise((_, reject) => {
         timer = setTimeout(() => reject(new Error(timeoutMsg)), timeoutMs);
@@ -231,6 +250,8 @@ function getClipClassifier() {
       try {
         const mod = await import(CLIP_TRANSFORMERS_CDN);
         const { pipeline, env } = mod;
+        env.allowLocalModels = true;
+        env.localModelPath = LOCAL_MODEL_PATH;
         const base = await getApiBase();
         const hosts = [];
         if (base) hosts.push(base + '/hf-proxy');
