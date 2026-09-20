@@ -1,8 +1,8 @@
 # Render Blueprint —— 免费 Web Service（闲置约 15 分钟休眠，冷启动 30~60s）
+# 说明：识别已统一走浏览器端本地 AI（CLIP），无需 API Key；后端仅做静态托管与模型代理
 # 用法：
 #   1) 把仓库推送到 GitHub
 #   2) Render 控制台 → New → Blueprint → 选择本仓库
-#   3) 按提示填 BAIDU_API_KEY / BAIDU_SECRET_KEY（可留空 → 自动 Mock / 浏览器本地 CLIP）
 services:
   - type: web
     name: light-eat
@@ -17,7 +17,3 @@ services:
     envVars:
       - key: NODE_VERSION
         value: "22"
-      - key: BAIDU_API_KEY
-        sync: false
-      - key: BAIDU_SECRET_KEY
-        sync: false

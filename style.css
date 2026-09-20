@@ -133,6 +133,9 @@
 }
 
 /* Core Styles */
+html, body {
+  overflow-x: hidden;
+}
 body {
   font-family: var(--font-body, "PingFang SC", -apple-system, BlinkMacSystemFont, "Microsoft YaHei", sans-serif);
   background: var(--color-bg, #F7F8F6);
@@ -932,11 +935,22 @@ select.profile-input {
 .nav-item span.nav-label-medium { font-weight: var(--weight-medium, 500); }
 .nav-item span.nav-label-bold { font-weight: var(--weight-semibold, 600); }
 
+/* 手机端底部导航只保留核心 Tab：
+   style.css 的 .nav-item{display:flex} 晚于 tailwind 加载，会覆盖 .hidden，
+   这里用组合选择器提升特异性强制隐藏 */
+@media (max-width: 1023.98px) {
+  .bottom-nav .nav-item.hidden { display: none; }
+}
+
 
 /* ── Top Header ── */
 .app-header {
+  position: sticky;
+  top: 0;
+  z-index: 40;
   background: var(--color-surface, #FFFFFF);
   border-bottom: 1px solid var(--color-border-subtle, #EEF0EE);
+  box-shadow: 0 2px 12px rgba(15, 41, 33, 0.06);
 }
 .app-header-inner {
   max-width: 768px;

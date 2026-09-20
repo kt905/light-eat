@@ -8,8 +8,8 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <title>轻食记 LightEat - 智能饮食管理平台</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.js" async></script>
-    <link rel="stylesheet" href="./css/tailwind.css?v=6" />
-    <link rel="stylesheet" href="./style.css?v=6" />
+    <link rel="stylesheet" href="./css/tailwind.css?v=7" />
+    <link rel="stylesheet" href="./style.css?v=7" />
 </head>
 <body class="text-gray-800" data-page="home">
 
@@ -148,6 +148,22 @@
       </div>
     </div>
     <div class="page-body">
+      <div class="glass-card p-4 mb-4">
+        <div class="flex items-start gap-3">
+          <div class="w-9 h-9 rounded-lg flex items-center justify-center shrink-0 text-white" style="background:linear-gradient(135deg,#7C3AED,#EC4899);">
+            <i data-lucide="download" class="w-4 h-4"></i>
+          </div>
+          <div class="min-w-0 flex-1">
+            <div class="text-sm font-semibold text-primary">免费本地 AI 识别模型</div>
+            <div class="text-xs text-tertiary mt-0.5 leading-relaxed">拍照识别在你的设备本地运行，首次会自动下载约 150MB 模型。建议先点击下载，避免第一次分析久等。</div>
+            <button id="model-download-btn" onclick="downloadClipModel()" class="btn btn-secondary btn-sm mt-2">
+              <i data-lucide="download" class="w-4 h-4"></i>
+              下载 AI 模型（约 150MB）
+            </button>
+            <div id="model-download-status" class="text-xs mt-1.5 text-tertiary"></div>
+          </div>
+        </div>
+      </div>
       <div class="glass-card p-5">
         <div class="scan-desktop-grid">
           <div class="scan-upload-col">
@@ -476,19 +492,19 @@
       </div>
       <span class="nav-label-medium">记录</span>
     </button>
-    <button onclick="switchPage('dashboard')" class="nav-item" data-page="dashboard">
+    <button onclick="switchPage('dashboard')" class="nav-item hidden lg:flex" data-page="dashboard">
       <div class="relative">
         <i data-lucide="bar-chart-3" class="w-5 h-5"></i>
       </div>
       <span class="nav-label-medium">仪表盘</span>
     </button>
-    <button onclick="switchPage('recipes')" class="nav-item" data-page="recipes">
+    <button onclick="switchPage('recipes')" class="nav-item hidden lg:flex" data-page="recipes">
       <div class="relative">
         <i data-lucide="chef-hat" class="w-5 h-5"></i>
       </div>
       <span class="nav-label-medium">食谱</span>
     </button>
-    <button onclick="switchPage('library')" class="nav-item" data-page="library">
+    <button onclick="switchPage('library')" class="nav-item hidden lg:flex" data-page="library">
       <div class="relative">
         <i data-lucide="book-open" class="w-5 h-5"></i>
       </div>
@@ -504,18 +520,18 @@
   </div>
 </nav>
 
-<script src="js/data.js?v=6"></script>
-<script src="js/core.js?v=6"></script>
-<script src="js/ui.js?v=6"></script>
-<script src="js/router.js?v=6"></script>
-<script src="js/pages/home.js?v=6"></script>
-<script src="js/pages/profile.js?v=6"></script>
-<script src="js/pages/scan.js?v=6"></script>
-<script src="js/pages/logs.js?v=6"></script>
-<script src="js/pages/dashboard.js?v=6"></script>
-<script src="js/pages/recipes.js?v=6"></script>
-<script src="js/pages/library.js?v=6"></script>
-<script src="js/init.js?v=6"></script>
+<script src="js/data.js?v=7"></script>
+<script src="js/core.js?v=7"></script>
+<script src="js/ui.js?v=7"></script>
+<script src="js/router.js?v=7"></script>
+<script src="js/pages/home.js?v=7"></script>
+<script src="js/pages/profile.js?v=7"></script>
+<script src="js/pages/scan.js?v=7"></script>
+<script src="js/pages/logs.js?v=7"></script>
+<script src="js/pages/dashboard.js?v=7"></script>
+<script src="js/pages/recipes.js?v=7"></script>
+<script src="js/pages/library.js?v=7"></script>
+<script src="js/init.js?v=7"></script>
 <script src="https://cdn.jsdelivr.net/npm/lucide@1.46.0/dist/umd/lucide.min.js" async onload="refreshIcons()"></script>
     <script>refreshIcons();</script>
 </body>

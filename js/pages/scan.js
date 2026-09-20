@@ -135,7 +135,7 @@ function addDetectionItem(food, confidence) {
 
 let currentCandidates = [];
 
-// ── 百度AI识别结果 → 本地食物库匹配 ──
+// ── 识别结果 → 本地食物库匹配 ──
 function matchFoodByName(name) {
   if (!name) return null;
   const normalized = name.replace(/[\s（）()\[\]【】]/g, '').toLowerCase();
@@ -240,8 +240,8 @@ function getClipClassifier() {
       const localReady = await isLocalModelReady();
       const timeoutMs = localReady ? 30000 : 300000;
       const timeoutMsg = localReady
-        ? '本地模型加载超时，请刷新页面重试，或改用百度AI'
-        : '模型下载超时：请确认网络可访问 HuggingFace/镜像，或运行 download-clip-model.ps1 下载到本地';
+        ? '本地模型加载超时，请刷新页面重试'
+        : '模型下载超时：请确认网络可访问 HuggingFace，或使用下载按钮重试/将模型放入本地 assets/models/';
       let timer;
       const timedOut = new Promise((_, reject) => {
         timer = setTimeout(() => reject(new Error(timeoutMsg)), timeoutMs);
@@ -304,6 +304,40 @@ async function recognizeWithClip(file) {
   }
 }
 
+let clipDownloadState = null; // 'loading' | 'done' | null
+
+// 提前下载本地 AI 模型（约150MB），避免首次分析时等待
+async function downloadClipModel() {
+  const btn = document.getElementById('model-download-btn');
+  const st = document.getElementById('model-download-status');
+  const orig = btn ? btn.innerHTML : '';
+  if (clipDownloadState === 'loading') return;
+  if (clipDownloadState === 'done') {
+    if (btn) { btn.disabled = true; btn.innerHTML = '<i data-lucide="check" class="w-4 h-4"></i> 模型已下载'; }
+    if (st) st.textContent = '识别模型已就绪并缓存在此浏览器。';
+    refreshIcons();
+    return;
+  }
+  clipDownloadState = 'loading';
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = '<span class="inline-block align-middle mr-1 h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-t-transparent"></span> 下载中...';
+  }
+  if (st) st.textContent = '正在后台下载约 150MB 模型，请勿关闭页面，下载一次后永久生效。';
+  refreshIcons();
+  try {
+    await getClipClassifier();
+    clipDownloadState = 'done';
+    if (btn) { btn.disabled = true; btn.innerHTML = '<i data-lucide="check" class="w-4 h-4"></i> 模型已下载'; }
+    if (st) st.textContent = '已就绪：模型保存在浏览器缓存中，之后识别秒开。';
+  } catch (err) {
+    clipDownloadState = null;
+    if (btn) { btn.disabled = false; btn.innerHTML = orig; }
+    if (st) st.textContent = '下载失败：' + (err && err.message || '网络异常') + '。可稍后重试，或直接开始分析（会自动用已缓存部分）。';
+  }
+  refreshIcons();
+}
+
 async function analyze() {
   const grams = Number(document.getElementById('grams').value) || 100;
   const manual = document.getElementById('manual-food').value;
@@ -340,21 +374,12 @@ async function analyze() {
   detectionsEl.innerHTML = '';
   btn.disabled = true;
 
-  // 判断识别通道：未配置百度AI(演示模式)或后端离线 → 用浏览器端免费本地AI识别
-  const backend = await getBackendStatus();
-  const useLocalClip = !backend.online || backend.mockMode;
-
-  // 进度提示（本地识别首次需下载模型，耗时较长）
-  const steps = useLocalClip ? [
+  // 统一走浏览器端免费本地 AI 识别（CLIP 模型，首次需下载模型）
+  const steps = [
     { pct: 15, step: '正在读取图片...' },
     { pct: 40, step: '加载本地AI模型（首次需下载，请稍候）...' },
     { pct: 65, step: '浏览器端 AI 识别中...' },
     { pct: 90, step: '比对食物营养库...' },
-  ] : [
-    { pct: 20, step: '正在上传图像...' },
-    { pct: 45, step: 'AI 云端识别中...' },
-    { pct: 70, step: '比对食物营养库...' },
-    { pct: 90, step: '生成候选列表...' },
   ];
 
   let stepIdx = 0;
@@ -365,10 +390,9 @@ async function analyze() {
     stepIdx++;
   }, 400);
 
-  function finishWithCandidates(candidates, mode) {
+  function finishWithCandidates(candidates) {
     clearInterval(stepTimer);
-    const doneText = { local: '本地AI识别完成', server: '识别完成', mock: '识别完成（演示模式）' };
-    setScanProgress(100, doneText[mode] || '识别完成');
+    setScanProgress(100, '识别完成');
     currentCandidates = candidates;
     setTimeout(() => {
       scanner.classList.add('hidden');
@@ -377,11 +401,7 @@ async function analyze() {
       renderCandidates();
       candidatesEl.classList.remove('hidden');
       refreshIcons();
-      if (mode === 'local') {
-        showToast('免费本地AI识别：模型在您的设备上运行，无需API Key');
-      } else if (mode === 'mock') {
-        showToast('当前为演示模式，可配置百度API Key或使用本地AI识别');
-      }
+      showToast('免费本地AI识别：模型在您的设备上运行，无需API Key');
     }, 300);
   }
 
@@ -396,32 +416,7 @@ async function analyze() {
 
   let candidatesData;
   try {
-    if (useLocalClip) {
-      candidatesData = await recognizeWithClip(file);
-    } else {
-      const formData = new FormData();
-      formData.append('image', file);
-      const base = await getApiBase();
-      const resp = await fetch(base + '/api/food/recognize', {
-        method: 'POST',
-        body: formData,
-      });
-      if (!resp.ok) {
-        const errData = await resp.json().catch(() => ({}));
-        if (resp.status === 503 || errData.code === 'BAIDU_NOT_CONFIGURED') {
-          failWithError('百度API未配置，请先在server/.env中填入凭证，或手动选择食物');
-        } else {
-          failWithError(errData.message || '识别服务异常，请手动选择食物');
-        }
-        return;
-      }
-      const data = await resp.json();
-      if (!data.success) {
-        failWithError(data.message || '识别失败');
-        return;
-      }
-      candidatesData = data.candidates;
-    }
+    candidatesData = await recognizeWithClip(file);
   } catch (err) {
     console.error('识别失败:', err);
     failWithError((err && err.message ? '识别失败：' + err.message : '识别失败') + '，请手动选择食物');
@@ -451,7 +446,7 @@ async function analyze() {
     setTimeout(() => {
       if (mapped[1]) addDetectionItem(mapped[1].food, mapped[1].confidence);
     }, 1100);
-    finishWithCandidates(mapped.slice(0, 5), useLocalClip ? 'local' : 'server');
+    finishWithCandidates(mapped.slice(0, 5));
   } else {
     failWithError('未能识别出食物，请手动选择');
   }
