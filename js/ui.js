@@ -16,8 +16,12 @@ function showToast(msg) {
   if (!t) {
     t = document.createElement('div');
     t.id = 'scan-toast';
-    t.className = 'fixed left-1/2 -translate-x-1/2 px-4 py-2 rounded-xl text-sm font-medium z-50';
-    t.style.cssText = 'background:rgba(15,41,33,0.88);color:#fff;top:80px;backdrop-filter:blur(8px);box-shadow:0 8px 24px rgba(0,0,0,0.15);';
+    t.style.cssText =
+      'position:fixed;left:50%;top:80px;z-index:50;' +
+      'transform:translateX(-50%);padding:10px 16px;border-radius:12px;' +
+      'font-size:13px;font-weight:500;line-height:1.5;white-space:nowrap;' +
+      'background:rgba(15,41,33,0.88);color:#fff;' +
+      'backdrop-filter:blur(8px);box-shadow:0 8px 24px rgba(0,0,0,0.15);';
     document.body.appendChild(t);
   }
   t.textContent = msg;
