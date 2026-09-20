@@ -194,19 +194,18 @@ async function getApiBase() {
       return r.ok;
     } catch (e) { return false; }
   };
-  // 本地静态服务器开发（如 Live Server :5500）：同源没有后端，
-  // 直接探测本机 Node 后端，避免同源 /api/health 产生 404 控制台报错
+  // 远程静态托管（如 GitHub Pages）：无 Node 后端，直接纯前端模式。
+  // 不做 /api/health 探测，避免纯静态站产生无意义的 404 控制台报错。
   const localHost = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
-  if (localHost && location.port && location.port !== '3000') {
+  if (!localHost) { __apiBase = ''; return __apiBase; }
+  // 本地静态服务器开发（如 Live Server :5500）：同源没有后端，
+  // 直接探测本机 Node 后端
+  if (location.port && location.port !== '3000') {
     __apiBase = (await probe('http://localhost:3000/api/health')) ? 'http://localhost:3000' : '';
     return __apiBase;
   }
-  // 1) 同源后端（Node 同时托管前端）
-  if (await probe('/api/health')) __apiBase = '';
-  // 2) 兜底探测本机 Node 后端
-  else if (await probe('http://localhost:3000/api/health')) __apiBase = 'http://localhost:3000';
-  // 3) 无后端 → 纯前端本地AI
-  else __apiBase = '';
+  // 同源后端（Node 同时托管前端）
+  __apiBase = (await probe('/api/health')) ? '' : 'http://localhost:3000';
   return __apiBase;
 }
 
@@ -217,31 +216,14 @@ async function getApiBase() {
 const CLIP_TRANSFORMERS_CDN = 'https://cdn.jsdelivr.net/npm/@huggingface/transformers@4.3.0';
 const CLIP_MODEL_ID = 'Xenova/clip-vit-base-patch32';
 const CLIP_MIN_SCORE = 0.04; // 仅保留超过该置信度的候选
-// 本地模型目录：按当前页面位置解析，兼容 Live Server 子路径 / 子目录部署
-const LOCAL_MODEL_PATH = new URL('./assets/models/', location.href).href;
-
-// 检测本地自托管模型是否就绪（页面同级的 assets/models/ 下存在 config.json）
-async function isLocalModelReady() {
-  try {
-    const ctrl = new AbortController();
-    const t = setTimeout(() => ctrl.abort(), 2500);
-    const r = await fetch(LOCAL_MODEL_PATH + CLIP_MODEL_ID + '/config.json',
-      { method: 'HEAD', cache: 'no-store', signal: ctrl.signal });
-    clearTimeout(t);
-    return r.ok;
-  } catch (e) { return false; }
-}
 
 let clipClassifierPromise = null;
 function getClipClassifier() {
   if (!clipClassifierPromise) {
     clipClassifierPromise = (async () => {
-      // 超时看门狗：本地模型就绪时加载很快；需远程下载时给足时间（约150MB）
-      const localReady = await isLocalModelReady();
-      const timeoutMs = localReady ? 30000 : 300000;
-      const timeoutMsg = localReady
-        ? '本地模型加载超时，请刷新页面重试'
-        : '模型下载超时：请确认网络可访问 HuggingFace，或使用下载按钮重试/将模型放入本地 assets/models/';
+      // 超时看门狗：约150MB 模型首次下载，给足时间
+      const timeoutMs = 300000;
+      const timeoutMsg = '模型下载超时：请检查网络，可稍后点「下载 AI 模型」按钮重试';
       let timer;
       const timedOut = new Promise((_, reject) => {
         timer = setTimeout(() => reject(new Error(timeoutMsg)), timeoutMs);
@@ -249,13 +231,11 @@ function getClipClassifier() {
       try {
         const mod = await import(CLIP_TRANSFORMERS_CDN);
         const { pipeline, env } = mod;
-        // 本地自托管优先：模型放在 assets/models/（用 download-clip-model.ps1 下载）
-        // 文件缺失时自动回退到远程镜像（后端代理 → huggingface.co）
-        env.allowLocalModels = true;
-        env.localModelPath = LOCAL_MODEL_PATH;
         const base = await getApiBase();
         const hosts = [];
         if (base) hosts.push(base + '/hf-proxy');
+        // 国内优先走 hf-mirror 镜像（huggingface.co 直连经常超时），海外可直连
+        hosts.push('https://hf-mirror.com');
         hosts.push('https://huggingface.co');
         let lastErr = null;
         for (const host of hosts) {
