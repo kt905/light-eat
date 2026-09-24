@@ -251,7 +251,10 @@ function getClipClassifier() {
         const mod = await import(CLIP_TRANSFORMERS_CDN);
         const { pipeline, env } = mod;
         env.allowLocalModels = true;
-        env.localModelPath = LOCAL_MODEL_PATH;
+        // 用相对路径而非绝对 URL：transformers.js v4 的存在性探测（Pt）对绝对 http(s)
+        // 本地路径一律跳过本地、直接走远程，导致 tokenizer 等小文件回退到无 CORS 的远程镜像。
+        // 相对路径经浏览器按页面 base 解析为同源绝对地址，本地/静态托管均正确。
+        env.localModelPath = './assets/models/';
         const base = await getApiBase();
         const hosts = [];
         if (base) hosts.push(base + '/hf-proxy');
