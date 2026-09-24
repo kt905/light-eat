@@ -211,8 +211,10 @@ async function getApiBase() {
 
 /* ============ 本地免费 AI 识别（浏览器端 CLIP 零样本） ============
  * 不依赖任何 API Key，模型权重在用户设备上运行，永久免费、无调用限额。
- * 线上部署：静态托管即可，后端只需用于代理模型下载。
- * 国内网络默认走 hf-mirror 镜像加速；海外部署可改为 https://huggingface.co */
+ * 模型权重（vision/text 分体 onnx，各 <100MB）随仓库提交于 assets/models/，
+ * GitHub Pages 等静态托管同源加载：无需后端、无 CORS、无外网依赖。
+ * 官方 pipeline 所需合并体 model_quantized.onnx 达 146.5MB（超 GitHub 单文件
+ * 100MB 上限，无法随仓库托管），故在此加载两个分体编码器并手动组合打分。 */
 const CLIP_TRANSFORMERS_CDN = 'https://cdn.jsdelivr.net/npm/@huggingface/transformers@4.3.0';
 const CLIP_MODEL_ID = 'Xenova/clip-vit-base-patch32';
 const CLIP_MIN_SCORE = 0.04; // 仅保留超过该置信度的候选
@@ -242,38 +244,78 @@ function getClipClassifier() {
       const timeoutMs = localReady ? 120000 : 300000;
       const timeoutMsg = localReady
         ? '本地模型加载超时，请刷新页面重试'
-        : '模型下载超时：网络不佳，可稍后点「下载 AI 模型」按钮重试';
+        : '模型文件加载超时：模型缺失或网络异常，可刷新页面重试，或重新运行 download-clip-model.ps1';
       let timer;
       const timedOut = new Promise((_, reject) => {
         timer = setTimeout(() => reject(new Error(timeoutMsg)), timeoutMs);
       });
       try {
         const mod = await import(CLIP_TRANSFORMERS_CDN);
-        const { pipeline, env } = mod;
+        const {
+          AutoProcessor, AutoTokenizer,
+          CLIPVisionModelWithProjection, CLIPTextModelWithProjection,
+          RawImage, env,
+        } = mod;
         env.allowLocalModels = true;
         // 用相对路径而非绝对 URL：transformers.js v4 的存在性探测（Pt）对绝对 http(s)
         // 本地路径一律跳过本地、直接走远程，导致 tokenizer 等小文件回退到无 CORS 的远程镜像。
         // 相对路径经浏览器按页面 base 解析为同源绝对地址，本地/静态托管均正确。
         env.localModelPath = './assets/models/';
-        const base = await getApiBase();
-        const hosts = [];
-        if (base) hosts.push(base + '/hf-proxy');
-        // 国内优先走 hf-mirror 镜像（huggingface.co 直连经常超时），海外可直连
-        hosts.push('https://hf-mirror.com');
-        hosts.push('https://huggingface.co');
-        let lastErr = null;
-        for (const host of hosts) {
-          try {
-            env.remoteHost = host;
-            return await Promise.race([
-              timedOut,
-              pipeline('zero-shot-image-classification', CLIP_MODEL_ID, {
-                quantized: true, // 使用量化的 vision/text_model 分体 onnx（更小更快）
-              }),
+        return await Promise.race([
+          timedOut,
+          (async () => {
+            // 官方 pipeline 需要 146.5MB 的合并 model_quantized.onnx（超 GitHub 单文件 100MB 上限，
+            // 无法随仓库托管），因此改载仓库内已提交的两个分体量化编码器（各 <100MB、同源加载），
+            // 按 CLIPModel 的原始公式自行组合文本/图像相似度，得到与官方 pipeline 等价的零样本打分。
+            const [processor, tokenizer, visionModel, textModel] = await Promise.all([
+              AutoProcessor.from_pretrained(CLIP_MODEL_ID),
+              AutoTokenizer.from_pretrained(CLIP_MODEL_ID),
+              CLIPVisionModelWithProjection.from_pretrained(CLIP_MODEL_ID, { dtype: 'q8' }),
+              CLIPTextModelWithProjection.from_pretrained(CLIP_MODEL_ID, { dtype: 'q8' }),
             ]);
-          } catch (e) { lastErr = e; }
-        }
-        throw lastErr || new Error('无法加载AI模型');
+            const SCALE = 100; // 与官方合并模型里学得的 logit_scale（约 ln(100)）一致，影响置信度大小不影响排序
+            const normalize = (t, D) => {
+              const out = new Float32Array(t.data.length);
+              const n = t.dims[0];
+              for (let r = 0; r < n; r++) {
+                let s = 0;
+                for (let i = 0; i < D; i++) s += t.data[r * D + i] * t.data[r * D + i];
+                s = Math.sqrt(s) || 1;
+                for (let i = 0; i < D; i++) out[r * D + i] = t.data[r * D + i] / s;
+              }
+              return out;
+            };
+            // 返回与官方 pipeline 相容的调用形式：classifier(url, labels, {topk})
+            return async (imageUrl, labels, { topk = 6 } = {}) => {
+              const texts = labels.map(x => 'This is a photo of ' + x);
+              const text_inputs = tokenizer(texts, { padding: true, truncation: true });
+              const image = await RawImage.fromURL(imageUrl);
+              const { pixel_values } = processor(image);
+              const [{ image_embeds }, { text_embeds }] = await Promise.all([
+                visionModel({ pixel_values: Array.isArray(pixel_values) ? pixel_values : [pixel_values] }),
+                textModel(text_inputs),
+              ]);
+              const D = text_embeds.dims[1];
+              const nTxt = text_embeds.dims[0];
+              const imgF = normalize(image_embeds, D);
+              const txtF = normalize(text_embeds, D);
+              const row = [];
+              for (let j = 0; j < nTxt; j++) {
+                let s = 0;
+                for (let i = 0; i < D; i++) s += imgF[i] * txtF[j * D + i];
+                row.push({ logit: SCALE * s, label: labels[j] });
+              }
+              let max = -Infinity;
+              for (const r of row) if (r.logit > max) max = r.logit;
+              let es = 0;
+              for (const r of row) { r.e = Math.exp(r.logit - max); es += r.e; }
+              return row
+                .map(r => ({ score: r.e / es, label: r.label }))
+                .sort((a, b) => b.score - a.score)
+                .slice(0, topk || row.length);
+            };
+          })(),
+        ]);
       } finally {
         clearTimeout(timer);
       }
@@ -310,7 +352,7 @@ async function recognizeWithClip(file) {
 
 let clipDownloadState = null; // 'loading' | 'done' | null
 
-// 提前下载本地 AI 模型（约154MB），避免首次分析时等待
+// 提前下载本地 AI 模型（约150MB），避免首次分析时等待
 async function downloadClipModel() {
   const btn = document.getElementById('model-download-btn');
   const st = document.getElementById('model-download-status');
@@ -327,7 +369,7 @@ async function downloadClipModel() {
     btn.disabled = true;
     btn.innerHTML = '<span class="inline-block align-middle mr-1 h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-t-transparent"></span> 下载中...';
   }
-  if (st) st.textContent = '正在后台下载约 154MB 模型，请勿关闭页面，下载一次后永久生效。';
+  if (st) st.textContent = '正在后台加载约 150MB 模型，请勿关闭页面，加载一次后永久生效。';
   refreshIcons();
   try {
     await getClipClassifier();
@@ -337,7 +379,7 @@ async function downloadClipModel() {
   } catch (err) {
     clipDownloadState = null;
     if (btn) { btn.disabled = false; btn.innerHTML = orig; }
-    if (st) st.textContent = '下载失败：' + (err && err.message || '网络异常') + '。可稍后重试，或直接开始分析（会自动用已缓存部分）。';
+    if (st) st.textContent = '下载失败：' + (err && err.message || '网络异常') + '。可稍后重试，或直接开始分析。';
   }
   refreshIcons();
 }

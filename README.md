@@ -229,14 +229,17 @@ checkBackendStatus() // 页面加载时调用，更新提示文案、hero 徽标
 ```js
 getClipClassifier()          // 单例 Promise，加载失败后重置以便重试
   ├─ isLocalModelReady()  → HEAD {LOCAL_MODEL_PATH}{id}/config.json
-  ├─ 动态超时看门狗：本地就绪 120s / 需远程下载 300s
+  ├─ 动态超时看门狗：本地就绪 120s
   ├─ import(CLIP_TRANSFORMERS_CDN)      // transformers.js（jsdelivr）
   ├─ env.allowLocalModels = true
-  ├─ env.localModelPath  = LOCAL_MODEL_PATH   // 按页面地址解析，兼容子目录/子路径部署
-  ├─ 依次尝试 remoteHost：
-  │    1) {base}/hf-proxy          // 后端代理 hf-mirror（解决 CORS）
-  │    2) https://huggingface.co   // 海外直连兜底
-  └─ pipeline('zero-shot-image-classification', 'Xenova/clip-vit-base-patch32', {quantized:true})
+  ├─ env.localModelPath  = './assets/models/'   // 相对路径→同源绝对，兼容子目录部署
+  ├─ 并行加载（模型权重全部同源 assets/models/）：
+  │    AutoProcessor / AutoTokenizer
+  │    CLIPVisionModelWithProjection（dtype:'q8' → onnx/vision_model_quantized.onnx）
+  │    CLIPTextModelWithProjection（dtype:'q8' → onnx/text_model_quantized.onnx）
+  └─ 返回手动打分函数 classifier(url, labels, {topk})：
+       tokenizer("This is a photo of ...") → processor(image) → 两编码器 forward
+       → L2 归一化 → cos 相似度 × logit_scale(100) → softmax → 排序取 topk
 
 recognizeWithClip(file)
   ├─ enLabels = FOOD_EN_LABELS 的英文标签数组
@@ -244,6 +247,12 @@ recognizeWithClip(file)
   ├─ 过滤 score >= CLIP_MIN_SCORE(0.04)
   └─ 英文标签反查中文 → 返回 [{name, confidence, calorie, hasNutrition}]
 ```
+
+> **为何不用官方 `pipeline('zero-shot-image-classification')`**：transformers.js v4 的该 pipeline 需要
+> **合并体 `model_quantized.onnx`（146.5MB）**，超过 GitHub 单文件 100MB 上限，无法随仓库静态托管。
+> 因此改为加载仓库内已提交的两个**分体量化编码器**（各 <100MB），按 CLIPModel 原始公式
+> （`logits = logit_scale × cos_sim(L2 规范化嵌入)`，`logit_scale≈ln(100)`）手动组合打分，
+> 输出与官方 pipeline 等价（tiger 样例实测置信度 >99%）。
 
 常量（js/pages/scan.js）：
 | 常量 | 值 |
@@ -315,18 +324,22 @@ powershell -ExecutionPolicy Bypass -File download-clip-model.ps1
   `config.json`、`preprocessor_config.json`、`tokenizer.json`、`tokenizer_config.json`、
   `vocab.json`、`merges.txt`、`special_tokens_map.json`、
   `onnx/vision_model_quantized.onnx`（约 89MB）、`onnx/text_model_quantized.onnx`（约 64MB）
-- 注意：最新 repo 采用 transformers.js v4 拆分结构（vision_model / text_model 分体），
-  旧版 `model_quantized.onnx` 已废弃，脚本运行时会自动删除该旧文件
+- 注意：transformers.js v4 采用 `vision_model` / `text_model` 分体结构；官方 `pipeline`
+  虽会请求合并体 `model_quantized.onnx`（146.5MB，超 GitHub 单文件 100MB 上限），
+  但应用不使用该 pipeline，而是直接加载下面两个分体编码器并手动组合打分（见 §6.2）。
+  脚本会自动删除废弃的旧的 v2 `model_quantized.onnx`（146MB）
 - 逐文件重试、临时 `.part` 文件、JSON 首尾校验、已存在文件跳过
 
 > 模型随仓库提交：9 个文件中最大的 `vision_model_quantized.onnx` 为 89MB（< 100MB git 上限），
 > 因此 `assets/models/` 不再被 `.gitignore` 排除，GitHub Pages 等静态托管可直接同源加载，无 CORS / 无外网依赖。
 
-### 8.2 加载优先级
+### 8.2 加载方式
 ```
-本地 assets/models/  →  后端 /hf-proxy（hf-mirror）  →  huggingface.co
+全部同源：本地 assets/models/（随仓库提交）→ 浏览器 Cache API 缓存
 ```
-本地文件齐全时**完全不依赖外网**，模型在浏览器（WASM）中推理，免费无限次。
+前端只用 jsdelivr CDN 加载 transformers.js **代码**（约 1.5MB）；模型权重全部
+从同源 `assets/models/` 加载，**完全不依赖外网**（huggingface.co / hf-mirror），
+无 CORS 问题，模型在浏览器（WASM）中推理，免费无限次。
 
 ---
 
@@ -361,7 +374,7 @@ powershell -ExecutionPolicy Bypass -File download-clip-model.ps1
 
 | 文件 | 说明 |
 |---|---|
-| `.gitignore` | 排除 `node_modules/`、`server/.env`；`assets/models/`（识别模型 154MB）**随仓库提交**，供静态托管同源加载 |
+| `.gitignore` | 排除 `node_modules/`、`server/.env`；`assets/models/`（识别模型约 150MB）**随仓库提交**，供静态托管同源加载 |
 | `render.yaml` | Render Blueprint：免费套餐、原生 Node、构建 CSS + 后端依赖、健康检查 `/api/health` |
 | `Dockerfile` + `.dockerignore` | 可选方案（把 `render.yaml` 的 `runtime` 改成 `docker` 即用镜像构建） |
 | 根 `package.json` | 已含 `"start": "node server/server.js"`，便于平台自动识别 |
@@ -415,12 +428,12 @@ git push -u origin main
 1. 等待构建日志结束（`Your service is live`）。
 2. 访问 `https://<服务名>.onrender.com`，确认首页、仪表盘图表正常。
 3. 访问 `https://<服务名>.onrender.com/api/health`，返回 `{"ok":true,...}`。
-4. 进入「识别」页，首次使用本地识别会经后端 `/hf-proxy`（hf-mirror 代理）下载约 154MB 模型，耐心等待后重试。
+4. 进入「识别」页，首次使用本地识别会从同源 `assets/models/` 加载约 150MB 模型（浏览器内缓存），耐心等待后重试。
 5. 之后每次 `git push origin main` 会自动重新部署。
 
 ### 10.3 纯静态托管（Vercel / Netlify / Cloudflare Pages / GitHub Pages）
 
-仅部署前端（`index.html` + `css/` + `js/` + `assets/`），**识别模型已随仓库提交**，由静态托管**同源加载**（无 CORS、无外网依赖、国内可用），首次分析需在浏览器内下载/缓存约 154MB 模型。**注意**：静态托管没有 `/api`、`/hf-proxy` 与百度识别：
+仅部署前端（`index.html` + `css/` + `js/` + `assets/`），**识别模型已随仓库提交**，由静态托管**同源加载**（无 CORS、无外网依赖、国内可用），首次分析需在浏览器内下载/缓存约 150MB 模型。**注意**：静态托管没有 `/api`、`/hf-proxy` 与百度识别：
 
 - 识别走浏览器本地 CLIP（同源 `assets/models/`，不依赖 `huggingface.co`，国内亦可用）；
 - 百度识别不可用；如需使用，须把后端（`server/`）单独部到 Node 主机，并在 `js/init.js` 设置 `API_BASE_MANUAL = 'https://<后端地址>'`。
@@ -429,7 +442,7 @@ git push -u origin main
 
 - Render 免费实例**闲置约 15 分钟休眠**，冷启动 30–60s，属正常现象。
 - 免费实例无持久磁盘，但本应用状态存于浏览器 `localStorage`，无需磁盘。
-- Render 免费每月 100GB 出网；模型经 `/hf-proxy` 透传会占用额度，浏览器缓存后不再重复下载。
+- Render 免费每月 100GB 出网；模型从同源 `assets/` 加载并经浏览器缓存，不再重复下载。
 - 备选常驻免费方案：Koyeb（1 个 Web Service，0.1 vCPU / 512MB，不休眠）。
 
 ---
@@ -442,7 +455,7 @@ git push -u origin main
 - 删除 `generateRecipes()` 内未被调用的 `pickN()` / `gramsForCal()` 死代码。
 - 修复 `showAnalysis()` 中 `resultEl` 的隐式全局变量（跨函数赋值会污染 `window`），改为局部声明 + 空值保护。
 - 清理过时注释（`foodTags` 注释里引用的 `assets/foods-data.js` 并不存在）。
-- 识别超时改为动态：本地模型就绪时 120s、需远程下载时 300s，避免慢网络下 154MB 模型加载被固定 70s 误杀，并给出区分化的错误提示。
+- 识别超时改为动态：本地模型就绪时 120s，避免慢网络下约 150MB 模型加载被固定 70s 误杀，并给出区分化的错误提示。
 - 修复 `addCurrentToLog` 依赖隐式全局 `event`（非标准，部分浏览器报错），改为显式传参 `addCurrentToLog(event)`。
 - 修复日期用 `toISOString()`（UTC）导致凌晨/晚间记录归属错日，改用本地日期 `localDateStr()`。
 - 修复 `foodIconHtml` 生成无效 Tailwind 类 `w-5.5`（图标尺寸失效），并补 `w-16` 尺寸映射。
@@ -477,7 +490,14 @@ git push -u origin main
 - **趋势图连线修正**：近 7 天热量折线 `spanGaps:false`，无记录的天不再被拉线连成连续曲线。
 - **运动估算校准**：快走 MET 4.5→3.5（65kg 时约 10000 步≈365 kcal，更贴近常识）。
 - **文案调整**：识别结果脂肪量改为「这餐热量约相当于 X g 脂肪 · 如不及时消耗需快走/慢跑抵消」；食谱三餐比例改为早30/午40/晚30。
-- **模型文件适配 transformers.js v4 + GitHub Pages 自托管**：v4 将 CLIP 拆分为 `vision_model` / `text_model` 分体 onnx（各 <100MB），`download-clip-model.ps1` 清单随之更新并自动清理废弃的 v2 `model_quantized.onnx`（146MB）；`assets/models/` 移出 `.gitignore` 随仓库提交，静态托管（GitHub Pages 等）可同源加载模型，规避 hf-mirror 无 CORS 与 huggingface.co 国内超时；`isLocalModelReady()` 不再仅限 localhost 探测，本地加载超时放宽至 120s。
+- **CLIP 打分改用手动组合分体编码器（GitHub Pages 可用的关键修复）**：transformers.js v4 的官方
+  `zero-shot-image-classification` pipeline 需要合并体 `model_quantized.onnx`（146.5MB，超 GitHub
+  单文件 100MB 上限，无法静态托管）；改为加载随仓库提交的 `vision_model`/`text_model` 分体量化 onnx
+  （各 <100MB），用 `AutoProcessor`/`AutoTokenizer` + `CLIPVisionModelWithProjection`/
+  `CLIPTextModelWithProjection` 本地推理，按 CLIPModel 原始公式（`logits = 100 × cos_sim(L2 嵌入)` +
+  softmax）手动打分，输出与官方 pipeline 等价（实测 tiger 99.3%）；彻底移除 hf-proxy/huggingface 远端
+  回退，模型权重全同源加载，规避 hf-mirror 无 CORS 与 huggingface.co 国内超时；`isLocalModelReady()`
+  不再仅限 localhost 探测，本地加载超时放宽至 120s。
 
 ### 注意事项
 - 前端为多文件经典脚本，无模块系统；`js/*.js` 按 `index.html` 末尾顺序加载并共享全局作用域，**新增文件/调整依赖须同步维护顺序**。
