@@ -52,7 +52,7 @@ light-eat-redesign/
 │  ├─ hero-fresh-food.jpg     首页/扫描页默认背景图
 │  ├─ logo-icon.jpg
 │  ├─ meals/                  食谱配图 breakfast/lunch/dinner.jpg
-│  └─ models/Xenova/clip-vit-base-patch32/   本地自托管 CLIP 模型（8 个文件）
+│  └─ models/Xenova/clip-vit-base-patch32/   本地自托管 CLIP 模型（9 个文件，随仓库提交）
 └─ server/
    ├─ server.js               Express 入口：API 路由 + 静态托管 + 模型代理
    ├─ baidu.js                百度 AI 鉴权与菜品识别客户端
@@ -229,7 +229,7 @@ checkBackendStatus() // 页面加载时调用，更新提示文案、hero 徽标
 ```js
 getClipClassifier()          // 单例 Promise，加载失败后重置以便重试
   ├─ isLocalModelReady()  → HEAD {LOCAL_MODEL_PATH}{id}/config.json
-  ├─ 动态超时看门狗：本地就绪 30s / 需远程下载 300s
+  ├─ 动态超时看门狗：本地就绪 120s / 需远程下载 300s
   ├─ import(CLIP_TRANSFORMERS_CDN)      // transformers.js（jsdelivr）
   ├─ env.allowLocalModels = true
   ├─ env.localModelPath  = LOCAL_MODEL_PATH   // 按页面地址解析，兼容子目录/子路径部署
@@ -311,10 +311,16 @@ powershell -ExecutionPolicy Bypass -File download-clip-model.ps1
 ```
 脚本行为：
 - 自动探测镜像：`hf-mirror.com` → `huggingface.co`（可用 `-Source` 指定，`-Force` 强制重下）
-- 下载 8 个文件到 `assets/models/Xenova/clip-vit-base-patch32/`：
+- 下载 9 个文件到 `assets/models/Xenova/clip-vit-base-patch32/`：
   `config.json`、`preprocessor_config.json`、`tokenizer.json`、`tokenizer_config.json`、
-  `vocab.json`、`merges.txt`、`special_tokens_map.json`、`onnx/model_quantized.onnx`（约 150MB）
+  `vocab.json`、`merges.txt`、`special_tokens_map.json`、
+  `onnx/vision_model_quantized.onnx`（约 89MB）、`onnx/text_model_quantized.onnx`（约 64MB）
+- 注意：最新 repo 采用 transformers.js v4 拆分结构（vision_model / text_model 分体），
+  旧版 `model_quantized.onnx` 已废弃，脚本运行时会自动删除该旧文件
 - 逐文件重试、临时 `.part` 文件、JSON 首尾校验、已存在文件跳过
+
+> 模型随仓库提交：9 个文件中最大的 `vision_model_quantized.onnx` 为 89MB（< 100MB git 上限），
+> 因此 `assets/models/` 不再被 `.gitignore` 排除，GitHub Pages 等静态托管可直接同源加载，无 CORS / 无外网依赖。
 
 ### 8.2 加载优先级
 ```
@@ -347,7 +353,7 @@ powershell -ExecutionPolicy Bypass -File download-clip-model.ps1
 | 本地开发 | `localhost:3000` | 同一进程 | 本地 CLIP（或配 Key 用百度） |
 | Live Server | `:5500` | 另起 `:3000` | 自动探测 3000 后端 |
 | 生产（同源） | Node 静态托管 | 同源 | 百度 / 本地 CLIP |
-| 生产（纯静态） | 任意静态托管 | 无 | 本地 CLIP（需模型已下载）；远程兜底 `huggingface.co` |
+| 生产（纯静态） | 任意静态托管 | 无 | 本地 CLIP（模型随仓库提交，同源加载，无需外网） |
 
 > 部署前须执行 `npm run build:css`，并确保 `css/tailwind.css` 一并发布。
 
@@ -355,7 +361,7 @@ powershell -ExecutionPolicy Bypass -File download-clip-model.ps1
 
 | 文件 | 说明 |
 |---|---|
-| `.gitignore` | 排除 `node_modules/`、`server/.env`、`assets/models/`（146MB 模型不入库） |
+| `.gitignore` | 排除 `node_modules/`、`server/.env`；`assets/models/`（识别模型 154MB）**随仓库提交**，供静态托管同源加载 |
 | `render.yaml` | Render Blueprint：免费套餐、原生 Node、构建 CSS + 后端依赖、健康检查 `/api/health` |
 | `Dockerfile` + `.dockerignore` | 可选方案（把 `render.yaml` 的 `runtime` 改成 `docker` 即用镜像构建） |
 | 根 `package.json` | 已含 `"start": "node server/server.js"`，便于平台自动识别 |
@@ -378,7 +384,7 @@ git branch -M main
 git remote add origin https://github.com/<你的用户名>/light-eat.git
 git push -u origin main
 ```
-推送前确认模型与密钥**不在**提交列表：`git status` 中不应出现 `assets/models/`、`server/.env`。
+推送前确认密钥**不在**提交列表：`git status` 中不应出现 `server/.env`；`assets/models/` 内的识别模型应**随仓库一并提交**（供 GitHub Pages 同源加载）。
 
 **第 2 步：在 Render 创建服务**（[dashboard.render.com](https://dashboard.render.com)）
 
@@ -409,14 +415,14 @@ git push -u origin main
 1. 等待构建日志结束（`Your service is live`）。
 2. 访问 `https://<服务名>.onrender.com`，确认首页、仪表盘图表正常。
 3. 访问 `https://<服务名>.onrender.com/api/health`，返回 `{"ok":true,...}`。
-4. 进入「识别」页，首次使用本地识别会经后端 `/hf-proxy`（hf-mirror 代理）下载约 150MB 模型，耐心等待后重试。
+4. 进入「识别」页，首次使用本地识别会经后端 `/hf-proxy`（hf-mirror 代理）下载约 154MB 模型，耐心等待后重试。
 5. 之后每次 `git push origin main` 会自动重新部署。
 
 ### 10.3 纯静态托管（Vercel / Netlify / Cloudflare Pages / GitHub Pages）
 
-仅部署前端（`index.html` + `css/` + `js/` + `assets/`）。**注意**：静态托管没有 `/api` 与 `/hf-proxy`，因此：
+仅部署前端（`index.html` + `css/` + `js/` + `assets/`），**识别模型已随仓库提交**，由静态托管**同源加载**（无 CORS、无外网依赖、国内可用），首次分析需在浏览器内下载/缓存约 154MB 模型。**注意**：静态托管没有 `/api`、`/hf-proxy` 与百度识别：
 
-- 仅能使用浏览器本地 CLIP（模型从 `huggingface.co` 直连，国内可能较慢）；
+- 识别走浏览器本地 CLIP（同源 `assets/models/`，不依赖 `huggingface.co`，国内亦可用）；
 - 百度识别不可用；如需使用，须把后端（`server/`）单独部到 Node 主机，并在 `js/init.js` 设置 `API_BASE_MANUAL = 'https://<后端地址>'`。
 
 ### 10.4 免费额度与限制
@@ -436,7 +442,7 @@ git push -u origin main
 - 删除 `generateRecipes()` 内未被调用的 `pickN()` / `gramsForCal()` 死代码。
 - 修复 `showAnalysis()` 中 `resultEl` 的隐式全局变量（跨函数赋值会污染 `window`），改为局部声明 + 空值保护。
 - 清理过时注释（`foodTags` 注释里引用的 `assets/foods-data.js` 并不存在）。
-- 识别超时改为动态：本地模型就绪时 30s、需远程下载时 300s，避免慢网络下 150MB 下载被固定 70s 误杀，并给出区分化的错误提示。
+- 识别超时改为动态：本地模型就绪时 120s、需远程下载时 300s，避免慢网络下 154MB 模型加载被固定 70s 误杀，并给出区分化的错误提示。
 - 修复 `addCurrentToLog` 依赖隐式全局 `event`（非标准，部分浏览器报错），改为显式传参 `addCurrentToLog(event)`。
 - 修复日期用 `toISOString()`（UTC）导致凌晨/晚间记录归属错日，改用本地日期 `localDateStr()`。
 - 修复 `foodIconHtml` 生成无效 Tailwind 类 `w-5.5`（图标尺寸失效），并补 `w-16` 尺寸映射。
@@ -471,6 +477,7 @@ git push -u origin main
 - **趋势图连线修正**：近 7 天热量折线 `spanGaps:false`，无记录的天不再被拉线连成连续曲线。
 - **运动估算校准**：快走 MET 4.5→3.5（65kg 时约 10000 步≈365 kcal，更贴近常识）。
 - **文案调整**：识别结果脂肪量改为「这餐热量约相当于 X g 脂肪 · 如不及时消耗需快走/慢跑抵消」；食谱三餐比例改为早30/午40/晚30。
+- **模型文件适配 transformers.js v4 + GitHub Pages 自托管**：v4 将 CLIP 拆分为 `vision_model` / `text_model` 分体 onnx（各 <100MB），`download-clip-model.ps1` 清单随之更新并自动清理废弃的 v2 `model_quantized.onnx`（146MB）；`assets/models/` 移出 `.gitignore` 随仓库提交，静态托管（GitHub Pages 等）可同源加载模型，规避 hf-mirror 无 CORS 与 huggingface.co 国内超时；`isLocalModelReady()` 不再仅限 localhost 探测，本地加载超时放宽至 120s。
 
 ### 注意事项
 - 前端为多文件经典脚本，无模块系统；`js/*.js` 按 `index.html` 末尾顺序加载并共享全局作用域，**新增文件/调整依赖须同步维护顺序**。

@@ -5,7 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="theme-color" content="#1B6B4A">
     <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <link rel="icon" type="image/jpeg" href="./assets/logo-icon.jpg">
     <title>轻食记 LightEat - 智能饮食管理平台</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.js" async></script>
     <link rel="stylesheet" href="./css/tailwind.css?v=10" />
@@ -155,10 +157,10 @@
           </div>
           <div class="min-w-0 flex-1">
             <div class="text-sm font-semibold text-primary">免费本地 AI 识别模型</div>
-            <div class="text-xs text-tertiary mt-0.5 leading-relaxed">拍照识别在你的设备本地运行，首次会自动下载约 150MB 模型。建议先点击下载，避免第一次分析久等。</div>
+            <div class="text-xs text-tertiary mt-0.5 leading-relaxed">拍照识别在你的设备本地运行，首次会自动加载约 154MB 模型（已随站点部署，同源加载）。建议先点击下载，避免第一次分析久等。</div>
             <button id="model-download-btn" onclick="downloadClipModel()" class="btn btn-secondary btn-sm mt-2">
               <i data-lucide="download" class="w-4 h-4"></i>
-              下载 AI 模型（约 150MB）
+              下载 AI 模型（约 154MB）
             </button>
             <div id="model-download-status" class="text-xs mt-1.5 text-tertiary"></div>
           </div>

@@ -216,7 +216,8 @@ async function getApiBase() {
 const CLIP_TRANSFORMERS_CDN = 'https://cdn.jsdelivr.net/npm/@huggingface/transformers@4.3.0';
 const CLIP_MODEL_ID = 'Xenova/clip-vit-base-patch32';
 const CLIP_MIN_SCORE = 0.04; // 仅保留超过该置信度的候选
-// 本地模型目录：由 download-clip-model.ps1 下载到 assets/models/（仅本地使用）
+// 本地模型目录：由 download-clip-model.ps1 下载到 assets/models/
+// 该目录已随仓库提交，GitHub Pages 等静态托管可直接同源加载（vision/text 拆分文件均 <100MB）
 const LOCAL_MODEL_PATH = new URL('./assets/models/', location.href).href;
 
 // 检测本地自托管模型是否就绪（页面同级的 assets/models/ 下存在 config.json）
@@ -236,10 +237,9 @@ function getClipClassifier() {
   if (!clipClassifierPromise) {
     clipClassifierPromise = (async () => {
       // 本地已用 download-clip-model.ps1 下载模型时直接加载本地文件（快）；
-      // 仅 localhost 探测，线上静态托管静默跳过，避免无意义的 config.json 404
-      const isLocalHost = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
-      const localReady = isLocalHost ? await isLocalModelReady() : false;
-      const timeoutMs = localReady ? 30000 : 300000;
+      // 模型已随仓库提交，本地与 GitHub Pages 等静态托管均能同源加载
+      const localReady = await isLocalModelReady();
+      const timeoutMs = localReady ? 120000 : 300000;
       const timeoutMsg = localReady
         ? '本地模型加载超时，请刷新页面重试'
         : '模型下载超时：网络不佳，可稍后点「下载 AI 模型」按钮重试';
@@ -265,7 +265,7 @@ function getClipClassifier() {
             return await Promise.race([
               timedOut,
               pipeline('zero-shot-image-classification', CLIP_MODEL_ID, {
-                quantized: true, // 使用量化的 model_quantized.onnx（更小更快）
+                quantized: true, // 使用量化的 vision/text_model 分体 onnx（更小更快）
               }),
             ]);
           } catch (e) { lastErr = e; }
@@ -307,7 +307,7 @@ async function recognizeWithClip(file) {
 
 let clipDownloadState = null; // 'loading' | 'done' | null
 
-// 提前下载本地 AI 模型（约150MB），避免首次分析时等待
+// 提前下载本地 AI 模型（约154MB），避免首次分析时等待
 async function downloadClipModel() {
   const btn = document.getElementById('model-download-btn');
   const st = document.getElementById('model-download-status');
@@ -324,7 +324,7 @@ async function downloadClipModel() {
     btn.disabled = true;
     btn.innerHTML = '<span class="inline-block align-middle mr-1 h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-t-transparent"></span> 下载中...';
   }
-  if (st) st.textContent = '正在后台下载约 150MB 模型，请勿关闭页面，下载一次后永久生效。';
+  if (st) st.textContent = '正在后台下载约 154MB 模型，请勿关闭页面，下载一次后永久生效。';
   refreshIcons();
   try {
     await getClipClassifier();

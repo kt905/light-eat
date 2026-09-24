@@ -10,7 +10,8 @@
 #       -Force                                    （强制重新下载已存在的文件）
 #       -MaxRetries 5                             （每个文件失败重试次数，默认 4）
 #
-#  文件清单（transformers.js 加载该模型实际需要的 9 个文件）
+#  文件清单（transformers.js v4 加载该模型实际需要的文件）
+#  注意：v4 拆分为 vision_model / text_model 两个 onnx，旧的 model_quantized.onnx 已不再使用
 # ============================================================================
 
 param(
@@ -33,7 +34,8 @@ $Manifest = @(
   'vocab.json'
   'merges.txt'
   'special_tokens_map.json'
-  'onnx/model_quantized.onnx'
+  'onnx/vision_model_quantized.onnx'   # ~89MB，transformers.js v4 加载的分体视觉编码器
+  'onnx/text_model_quantized.onnx'     # ~64MB，transformers.js v4 加载的分体文本编码器
 )
 
 $Bases = @{
@@ -91,6 +93,13 @@ $Base = Resolve-Base $Source
 Write-Host ("使用镜像: {0}" -f $Base) -ForegroundColor Green
 
 New-Item -ItemType Directory -Path (Join-Path $OutDir 'onnx') -Force | Out-Null
+
+# 清理已废弃的旧版合并模型（transformers.js v4 不再使用 model_quantized.onnx）
+$Stale = Join-Path $OutDir 'onnx\model_quantized.onnx'
+if (Test-Path -LiteralPath $Stale) {
+  Remove-Item -LiteralPath $Stale -Force
+  Write-Host ('[清理] 删除已废弃的旧模型文件 model_quantized.onnx (旧版 v2 格式，约 150MB)') -ForegroundColor Yellow
+}
 
 $ok = 0; $skip = 0; $failed = @()
 foreach ($rel in $Manifest) {

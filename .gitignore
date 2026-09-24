@@ -6,9 +6,9 @@ server/node_modules/
 .env
 server/.env
 
-# ── 本地 CLIP 模型（约 150MB，超过 Git 单文件 100MB 上限）──
-# 前端会在运行时自动从 /hf-proxy（后端代理 hf-mirror）或 huggingface.co 下载
-assets/models/
+# ── 本地 CLIP 模型（v4 拆分文件均 <100MB，随仓库提交，GitHub Pages 同源自托管）──
+# 勿在其中忽略 assets/models/：该目录包含识别模型，提交后静态托管即可直接加载
+# （若需重新本地下载，运行 download-clip-model.ps1）
 
 # ── 日志 / 系统文件 ──
 *.log
